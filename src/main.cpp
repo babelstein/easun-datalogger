@@ -5,42 +5,50 @@
 
 // RX = D1 (GPIO5), TX = D2 (GPIO4)
 SoftwareSerial loggerSniffer(D1, D2); 
-const unsigned long MILISECONDS_DELAY = 10;
-
-// ✅ Zmienne do obsługi retry
+const unsigned long MILISECONDS_DELAY = 500;
 const int MAX_RETRIES = 3;
-unsigned long lastRetryTime = 0;
-int retryCount = 0;
+const bool debug = true;
 
 // Definicje gotowych ramek z obliczonym CRC i znakiem \r
-byte cmd_QPIGS[] = {0x51, 0x50, 0x49, 0x47, 0x53, 0xB7, 0xA9, 0x0D}; 
-byte cmd_QMOD[]  = {0x51, 0x4D, 0x4F, 0x44, 0x49, 0xC1, 0x0D};
-byte cmd_QPI[]   = {0x51, 0x50, 0x49, 0xBE, 0xAC, 0x0D};
-byte cmd_QPIRI[] = {0x51, 0x50, 0x49, 0x52, 0x49, 0xF8, 0x54, 0x0D};
-byte cmd_QVIRI[] = {0x51, 0x56, 0x49, 0x52, 0x49, 0x1B, 0x34, 0x0D};
+const byte cmd_QPIGS[] = {0x51, 0x50, 0x49, 0x47, 0x53, 0xB7, 0xA9, 0x0D}; 
+const byte cmd_QMOD[]  = {0x51, 0x4D, 0x4F, 0x44, 0x49, 0xC1, 0x0D};
+const byte cmd_QPI[]   = {0x51, 0x50, 0x49, 0xBE, 0xAC, 0x0D};
+const byte cmd_QPIRI[] = {0x51, 0x50, 0x49, 0x52, 0x49, 0xF8, 0x54, 0x0D};
+const byte cmd_QVIRI[] = {0x51, 0x56, 0x49, 0x52, 0x49, 0x1B, 0x34, 0x0D};
 
 // Tabela wskaźników do komend i ich rozmiarów
-byte* allCommands[] = {cmd_QPIGS, cmd_QMOD, cmd_QPI, cmd_QPIRI, cmd_QVIRI};
-int cmdSizes[] = {8, 7, 6, 8, 8};
+const byte* allCommands[] = {cmd_QPIGS, cmd_QMOD, cmd_QPI, cmd_QPIRI, cmd_QVIRI};
+const int cmdSizes[] = {8, 7, 6, 8, 8};
 const char* cmdNames[] = {"QPIGS", "QMOD", "QPI", "QPIRI", "QVIRI"};
-
-int currentCommandIndex = 0;
 const int numCommands = 5;
+
+int retryCount = 0;
+int currentCommandIndex = 0;
+
+void debugPrint(String message, bool newLine = true) {
+  if (debug) {
+    if (newLine) {
+      Serial.println(message);
+    } else {
+      Serial.print(message);
+    }
+  }
+}
 
 void setup() {
   configTime(0, 0, "pool.ntp.org"); 
   Serial.begin(9600);
   loggerSniffer.begin(2400); 
-  Serial.println("Rozpoczynam podsłuchiwanie sekwencyjne. . .");
+  debugPrint("Rozpoczynam podsłuchiwanie sekwencyjne. . .");
 
   // Connect to Wi-Fi
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
-    Serial.print(".");
+    debugPrint(".", false);
   }
-  Serial.println("");
-  Serial.println("Wi-Fi connected");
+  debugPrint("");
+  debugPrint("Wi-Fi connected");
 }
 
 
@@ -65,11 +73,11 @@ String readResult(){
 }
 
 void displayResults(String result){
-  Serial.println("Otrzymany wynik: " + result);
+  debugPrint("Otrzymany wynik: " + result);
 }
 
 void healthCheck(){
-  Serial.println("Wysyłanie żądania health check do serwera. . .");
+  debugPrint("Wysyłanie żądania health check do serwera. . .");
 
   WiFiClientSecure client;
   HTTPClient http;
@@ -84,13 +92,11 @@ void healthCheck(){
   int httpCode = http.GET();
   
   if (httpCode == 200) {
-    Serial.println("✅ Health check successful with code: " + String(httpCode));
-    
+    debugPrint("✅ Health check successful with code: " + String(httpCode));
     String serverResponse = http.getString();
-    Serial.println("Server response: " + serverResponse);
+    debugPrint("Server response: " + serverResponse);
   } else {
-    Serial.print("❌ Health check failed with code: ");
-    Serial.println(httpCode);
+    debugPrint("❌ Health check failed with code: " + String(httpCode));
   }
   
   // ✅ Wymuszenie zwolnienia zasobów (ważne dla ESP8266!)
@@ -98,8 +104,8 @@ void healthCheck(){
 }
 
 
-void sendData(String message) {
-  Serial.println("Wysyłanie danych do inwertera. . .");
+void sendDataArray(String* results) {
+  debugPrint("Wysyłanie danych do inwertera. . .");
   
   WiFiClientSecure client;
   HTTPClient http;
@@ -114,55 +120,57 @@ void sendData(String message) {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", auth_token);
   
-  String jsonPayload = "{\"operation\": \"" + String(cmdNames[currentCommandIndex]) + "\", " +
-                       "\"message\": \"" + message + "\"}";
+  // Budowanie tablicy obiektów JSON
+  String jsonObjects = "[";
+  for (int i = 0; i < numCommands; i++) {
+    jsonObjects += "{\"operation\": \"" + String(cmdNames[i]) + "\", " +
+                   "\"message\": \"" + results[i] + "\"}";
+    
+    if (i < numCommands - 1) {
+      jsonObjects += ",";
+    }
+  }
+  jsonObjects += "]";
   
-  Serial.println("Wysyłam payload: " + jsonPayload);
+  debugPrint("Wysyłam payload: " + jsonObjects);
   
-  int httpCode = http.POST(jsonPayload);
+  int httpCode = http.POST(jsonObjects);
   
   if (httpCode == 200) {
-    Serial.println("✅ POST request successful with code: " + String(httpCode));
+    debugPrint("✅ POST request successful with code: " + String(httpCode));
     retryCount = 0;
   } else {
     if (httpCode == 401 || httpCode == 400) {
-      Serial.print("❌ POST request failed with code: ");
-      Serial.println(httpCode);
+      debugPrint("❌ POST request failed with code: " + String(httpCode));
       retryCount = 0;
     } else if (retryCount < MAX_RETRIES) {
       retryCount++;
-      Serial.print("❌ Retry attempt ");
-      Serial.print(retryCount);
-      Serial.print(" of ");
-      Serial.println(MAX_RETRIES);
+      debugPrint("❌ Retry attempt " + String(retryCount) + " of " + String(MAX_RETRIES));
       
       // ✅ Opóźnienie w milisekundach (Arduino delay)
       unsigned long waitTime = 1000 * (1 << (retryCount - 1)); // 1s, 2s, 4s
-      Serial.print("Wait ");
-      Serial.print(waitTime);
-      Serial.println("ms before retry...");
+      debugPrint("Wait " + String(waitTime) + " ms before retrying...");
       
-      // ✅ Użycie Arduino delay()
+      // ✅ Opóźnienie przed ponowną próbą
       delay(waitTime);
       
       // ✅ Ponowna próba
-      httpCode = http.POST(jsonPayload);
+      httpCode = http.POST(jsonObjects);
       
       if (httpCode == 200) {
-        Serial.println("✅ Retry successful with code: " + String(httpCode));
+        debugPrint("✅ Retry successful with code: " + String(httpCode));
         retryCount = 0;
       } else {
-        Serial.print("❌ Retry failed with code: ");
-        Serial.println(httpCode);
+        debugPrint("❌ Retry failed with code: " + String(httpCode));
       }
     } else {
-      Serial.println("❌ Max retries reached. Giving up.");
+      debugPrint("❌ Max retries reached. Giving up.");
       retryCount = 0;
     }
   }
   
   String serverResponse = http.getString();
-  Serial.println("Server response: " + serverResponse);
+  debugPrint("Server response: " + serverResponse);
   
   // ✅ Wymuszenie zwolnienia zasobów (ważne dla ESP8266!)
   http.end();
@@ -170,22 +178,20 @@ void sendData(String message) {
 
 
 void loop() {
-  static unsigned long lastTime = 0;
-  
-  if (millis() - lastTime > MILISECONDS_DELAY) {
-    lastTime = millis();
-    
-    Serial.print("\nWysyłam: ");
-    Serial.println(cmdNames[currentCommandIndex]);
-    
-    loggerSniffer.write(allCommands[currentCommandIndex], cmdSizes[currentCommandIndex]);
+  static String results[numCommands];
 
-    String result = readResult();
-    displayResults(result);
-    // healthCheck();
-    sendData(result);
+  for (int i = 0; i < numCommands; i++) {
+    debugPrint("\nWysyłam: " + String(cmdNames[i]));
     
-    currentCommandIndex = (currentCommandIndex + 1) % numCommands;
-  } 
+    loggerSniffer.write(allCommands[i], cmdSizes[i]);
+    results[i] = readResult();
+    displayResults(results[i]);
+    
+    delay(MILISECONDS_DELAY);
+  }
+  
+  sendDataArray(results);
+  currentCommandIndex = 0;
+  delay(2500);
 }
 
