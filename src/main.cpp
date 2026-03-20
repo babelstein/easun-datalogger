@@ -1,26 +1,24 @@
-#include <SoftwareSerial.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 #include "secrets.h"
 
-// RX = D1 (GPIO5), TX = D2 (GPIO4)
-SoftwareSerial loggerSniffer(D1, D2); 
-const unsigned long MILISECONDS_DELAY = 500;
+// Using built-in UART (GPIO1 RX, GPIO3 TX)
+// RX = GPIO1, TX = GPIO3
+const unsigned long MILISECONDS_DELAY = 1000;
 const int MAX_RETRIES = 3;
-const bool debug = true;
+const bool debug = false;
 
 // Definicje gotowych ramek z obliczonym CRC i znakiem \r
 const byte cmd_QPIGS[] = {0x51, 0x50, 0x49, 0x47, 0x53, 0xB7, 0xA9, 0x0D}; 
 const byte cmd_QMOD[]  = {0x51, 0x4D, 0x4F, 0x44, 0x49, 0xC1, 0x0D};
 const byte cmd_QPI[]   = {0x51, 0x50, 0x49, 0xBE, 0xAC, 0x0D};
 const byte cmd_QPIRI[] = {0x51, 0x50, 0x49, 0x52, 0x49, 0xF8, 0x54, 0x0D};
-const byte cmd_QVIRI[] = {0x51, 0x56, 0x49, 0x52, 0x49, 0x1B, 0x34, 0x0D};
 
 // Tabela wskaźników do komend i ich rozmiarów
-const byte* allCommands[] = {cmd_QPIGS, cmd_QMOD, cmd_QPI, cmd_QPIRI, cmd_QVIRI};
-const int cmdSizes[] = {8, 7, 6, 8, 8};
-const char* cmdNames[] = {"QPIGS", "QMOD", "QPI", "QPIRI", "QVIRI"};
-const int numCommands = 5;
+const byte* allCommands[] = {cmd_QPIGS, cmd_QMOD, cmd_QPI, cmd_QPIRI};
+const int cmdSizes[] = {8, 7, 6, 8};
+const char* cmdNames[] = {"QPIGS", "QMOD", "QPI", "QPIRI"};
+const int numCommands = 4;
 
 int retryCount = 0;
 int currentCommandIndex = 0;
@@ -37,8 +35,7 @@ void debugPrint(String message, bool newLine = true) {
 
 void setup() {
   configTime(0, 0, "pool.ntp.org"); 
-  Serial.begin(9600);
-  loggerSniffer.begin(2400); 
+  Serial.begin(2400);
   debugPrint("Rozpoczynam podsłuchiwanie sekwencyjne. . .");
 
   // Connect to Wi-Fi
@@ -54,12 +51,13 @@ void setup() {
 
 String readResult(){
   String commandResult;
-  if (loggerSniffer.available()) {
-    while (loggerSniffer.available()) {
-      char c = loggerSniffer.read();
+  if (Serial.available()) {
+    while (Serial.available()) {
+      char c = Serial.read();
       
       if (c == '\r') {
         return commandResult;
+        Serial.flush();
       } 
       // Akceptujemy tylko czytelne znaki ASCII (od spacji do tyldy) oraz nawias (
       else if (c >= 32 && c <= 126) {
@@ -69,6 +67,7 @@ String readResult(){
       yield(); 
     }
   }
+  Serial.flush();
   return commandResult;
 }
 
@@ -183,7 +182,7 @@ void loop() {
   for (int i = 0; i < numCommands; i++) {
     debugPrint("\nWysyłam: " + String(cmdNames[i]));
     
-    loggerSniffer.write(allCommands[i], cmdSizes[i]);
+    Serial.write(allCommands[i], cmdSizes[i]);
     results[i] = readResult();
     displayResults(results[i]);
     
@@ -192,6 +191,6 @@ void loop() {
   
   sendDataArray(results);
   currentCommandIndex = 0;
-  delay(2500);
+  delay(1500);
 }
 
