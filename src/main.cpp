@@ -1,5 +1,6 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <SoftwareSerial.h>
 #include <ModbusMaster.h>
 #include "secrets.h"
 #include "modbus_registers.h"
@@ -10,13 +11,16 @@
 #define TX_PIN 4                       // GPIO4 (D2 on NodeMCU)
 #define RX_PIN 5                       // GPIO5 (D1 on NodeMCU)
 
+// Create SoftwareSerial instance for Modbus communication
+SoftwareSerial modbusSerial(RX_PIN, TX_PIN);
+
 // Create ModbusMaster object
 ModbusMaster modbusNode;
 
 // Retry configuration
 const unsigned long MILISECONDS_DELAY = 100;
 const int MAX_RETRIES = 3;
-const bool debug = false;
+bool debug = false;
 
 int retryCount = 0;
 int currentCommandIndex = 0;
@@ -33,10 +37,12 @@ void debugPrint(String message, bool newLine = true) {
 
 void setup() {
   configTime(0, 0, "pool.ntp.org"); 
+  debug = true;  // Enable debug output
   
   //hardware uart and modbus communiciation setup
-  Serial.begin(9600);
-  modbusNode.begin(MODBUS_SLAVE_ID, Serial);
+  Serial.begin(9600);  // Standard Serial for PC debugging
+  modbusSerial.begin(MODBUS_BAUD_RATE);  // SoftwareSerial for Modbus
+  modbusNode.begin(MODBUS_SLAVE_ID, modbusSerial);
   debugPrint("Rozpoczynam podsłuchiwanie sekwencyjne. . .");
 
   // Connect to Wi-Fi
@@ -161,10 +167,12 @@ void loop() {
     debugPrint("\nWysyłam: " + String(readRegisters[i].name));
     
     // Użyj długości rejestru z tablicy readRegisters
-    result = modbusNode.readHoldingRegisters(readRegisters[i].address, readRegisters[i].length);
+    result = modbusNode.readHoldingRegisters(readRegisters[i].address, 10);
     if (result == modbusNode.ku8MBSuccess) {
       results[i] = modbusNode.getResponseBuffer(0) * readRegisters[i].scale;
       displayResults(String(results[i]) + " " + readRegisters[i].unit);
+    } else {
+      debugPrint("Error reading register " + String(readRegisters[i].address) + ": " + String(result));
     }
     
     delay(MILISECONDS_DELAY);
