@@ -1,24 +1,22 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+#include <ModbusMaster.h>
 #include "secrets.h"
+#include "modbus_registers.h"
 
-// Using built-in UART (GPIO1 RX, GPIO3 TX)
-// RX = GPIO1, TX = GPIO3
-const unsigned long MILISECONDS_DELAY = 1000;
+// Modbus configuration
+#define MODBUS_SLAVE_ID 1              // SMG-II slave ID
+#define MODBUS_BAUD_RATE 9600         // Baud rate for Modbus RTU
+#define TX_PIN 4                       // GPIO4 (D2 on NodeMCU)
+#define RX_PIN 5                       // GPIO5 (D1 on NodeMCU)
+
+// Create ModbusMaster object
+ModbusMaster modbusNode;
+
+// Retry configuration
+const unsigned long MILISECONDS_DELAY = 100;
 const int MAX_RETRIES = 3;
 const bool debug = false;
-
-// Definicje gotowych ramek z obliczonym CRC i znakiem \r
-const byte cmd_QPIGS[] = {0x51, 0x50, 0x49, 0x47, 0x53, 0xB7, 0xA9, 0x0D}; 
-const byte cmd_QMOD[]  = {0x51, 0x4D, 0x4F, 0x44, 0x49, 0xC1, 0x0D};
-const byte cmd_QPI[]   = {0x51, 0x50, 0x49, 0xBE, 0xAC, 0x0D};
-const byte cmd_QPIRI[] = {0x51, 0x50, 0x49, 0x52, 0x49, 0xF8, 0x54, 0x0D};
-
-// Tabela wskaźników do komend i ich rozmiarów
-const byte* allCommands[] = {cmd_QPIGS, cmd_QMOD, cmd_QPI, cmd_QPIRI};
-const int cmdSizes[] = {8, 7, 6, 8};
-const char* cmdNames[] = {"QPIGS", "QMOD", "QPI", "QPIRI"};
-const int numCommands = 4;
 
 int retryCount = 0;
 int currentCommandIndex = 0;
@@ -35,7 +33,10 @@ void debugPrint(String message, bool newLine = true) {
 
 void setup() {
   configTime(0, 0, "pool.ntp.org"); 
-  Serial.begin(2400);
+  
+  //hardware uart and modbus communiciation setup
+  Serial.begin(9600);
+  modbusNode.begin(MODBUS_SLAVE_ID, Serial);
   debugPrint("Rozpoczynam podsłuchiwanie sekwencyjne. . .");
 
   // Connect to Wi-Fi
@@ -46,29 +47,6 @@ void setup() {
   }
   debugPrint("");
   debugPrint("Wi-Fi connected");
-}
-
-
-String readResult(){
-  String commandResult;
-  if (Serial.available()) {
-    while (Serial.available()) {
-      char c = Serial.read();
-      
-      if (c == '\r') {
-        return commandResult;
-        Serial.flush();
-      } 
-      // Akceptujemy tylko czytelne znaki ASCII (od spacji do tyldy) oraz nawias (
-      else if (c >= 32 && c <= 126) {
-        commandResult += c;
-      }
-      // Bajty CRC (często o wartościach < 32 lub > 126) zostaną tutaj pominięte
-      yield(); 
-    }
-  }
-  Serial.flush();
-  return commandResult;
 }
 
 void displayResults(String result){
@@ -103,7 +81,7 @@ void healthCheck(){
 }
 
 
-void sendDataArray(String* results) {
+void sendDataArray(uint8_t* results) {
   debugPrint("Wysyłanie danych do inwertera. . .");
   
   WiFiClientSecure client;
@@ -121,11 +99,11 @@ void sendDataArray(String* results) {
   
   // Budowanie tablicy obiektów JSON
   String jsonObjects = "[";
-  for (int i = 0; i < numCommands; i++) {
-    jsonObjects += "{\"operation\": \"" + String(cmdNames[i]) + "\", " +
-                   "\"message\": \"" + results[i] + "\"}";
+  for (int i = 0; i < numReadRegisters; i++) {
+    jsonObjects += "{\"operation\": \"" + String(readRegisters[i].name) + "\", " +
+                   "\"message\": \"" + String(results[i]) + "\"}";
     
-    if (i < numCommands - 1) {
+    if (i < numReadRegisters - 1) {
       jsonObjects += ",";
     }
   }
@@ -171,26 +149,28 @@ void sendDataArray(String* results) {
   String serverResponse = http.getString();
   debugPrint("Server response: " + serverResponse);
   
-  // ✅ Wymuszenie zwolnienia zasobów (ważne dla ESP8266!)
   http.end();
 }
 
 
 void loop() {
-  static String results[numCommands];
+  uint8_t result;
+  static uint8_t results[numReadRegisters];
 
-  for (int i = 0; i < numCommands; i++) {
-    debugPrint("\nWysyłam: " + String(cmdNames[i]));
+  for (int i = 0; i < numReadRegisters; i++) {
+    debugPrint("\nWysyłam: " + String(readRegisters[i].name));
     
-    Serial.write(allCommands[i], cmdSizes[i]);
-    results[i] = readResult();
-    displayResults(results[i]);
+    // Użyj długości rejestru z tablicy readRegisters
+    result = modbusNode.readHoldingRegisters(readRegisters[i].address, readRegisters[i].length);
+    if (result == modbusNode.ku8MBSuccess) {
+      results[i] = modbusNode.getResponseBuffer(0) * readRegisters[i].scale;
+      displayResults(String(results[i]) + " " + readRegisters[i].unit);
+    }
     
     delay(MILISECONDS_DELAY);
   }
   
   sendDataArray(results);
-  currentCommandIndex = 0;
   delay(1500);
 }
 
