@@ -1,0 +1,95 @@
+#ifndef QPIGS_PARSER_H
+#define QPIGS_PARSER_H
+
+#include <Arduino.h>
+
+/**
+ * @brief Structure to hold parsed QPIGS message data
+ * 
+ * QPIGS (Get Status) command response contains inverter status information
+ */
+struct QPIGSData {
+    // 1. Input AC voltage [V]
+    float inputACVoltage;
+    
+    // 2. Grid Frequency [Hz]
+    float gridFrequency;
+    
+    // 3. AC Output Voltage [V]
+    float acOutputVoltage;
+    
+    // 4. Output Frequency [Hz]
+    float outputFrequency;
+    
+    // 5. Apparent Output Power [W]
+    float apparentOutputPower;
+    
+    // 6. Active Output Power [W]
+    float activeOutputPower;
+    
+    // 7. Percent Load [%]
+    float percentLoad;
+    
+    // 8. Internal Bus Voltage [V]
+    float internalBusVoltage;
+    
+    // 9. Battery Voltage [V]
+    float batteryVoltage;
+    
+    // 10. Battery Charging Current [A]
+    float batteryChargingCurrent;
+    
+    // 11. Battery Charge Level [%]
+    float batteryChargeLevel;
+    
+    // 12. Heatsink Temperature [°C]
+    float heatsinkTemperature;
+    
+    // 13. PV Input Current [A]
+    float pvInputCurrent;
+    
+    // 14. PV Input Voltage [V]
+    float pvInputVoltage;
+    
+    // 15. Battery Voltage from SCC Controller [V]
+    float batteryVoltageFromSCC;
+    
+    // 16. Battery Discharge Current [A]
+    float batteryDischargeCurrent;
+    
+    // 17. Device Status Flags
+    int deviceStatusFlags;
+    
+    // 18. Additional Data 1/ Reserve
+    int additionalData1;
+    
+    // 19. Additional Data 2/ Reserve
+    int additionalData2;
+    
+    // 20. PV Production in Watts [W]
+    float pvProduction;
+    
+    // 21. Additional Flags
+    int additionalFlags;
+};
+
+/**
+ * @brief Parse QPIGS message string into QPIGSData structure
+ * 
+ * @param message The QPIGS response string (without parentheses)
+ * @param data Pointer to QPIGSData structure to populate
+ * @return true if parsing was successful, false otherwise
+ * 
+ * Example input: "241.6 49.9 241.6 49.9 0000 0000 000 319 00.30 000 000 0029 00.0 000.0 00.30 00000 00010000 00 00 00000 010.Z"
+ */
+bool parseQPIGSMessage(const String& message, QPIGSData* data);
+
+/**
+ * @brief Parse QPIGS message string into QPIGSData structure (convenience function)
+ * 
+ * @param message The QPIGS response string (without parentheses)
+ * @return QPIGSData populated with parsed values
+ */
+QPIGSData parseQPIGSMessage(const String& message);
+
+#endif // QPIGS_PARSER_H
