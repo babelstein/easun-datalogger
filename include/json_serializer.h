@@ -30,14 +30,4 @@ String qpiriDataToJson(const QPIRIData& data);
  */
 String qmodDataToJson(const QMODData& data);
 
-/**
- * @brief Convert all three data structures to a combined JSON object
- * 
- * @param qpigsData The QPIGSData structure
- * @param qpiriData The QPIRIData structure
- * @param qmodData The QMODData structure
- * @return String Combined JSON object with all data
- */
-String allDataToJson(const QPIGSData& qpigsData, const QPIRIData& qpiriData, const QMODData& qmodData);
-
 #endif // JSON_SERIALIZER_H

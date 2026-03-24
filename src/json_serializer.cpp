@@ -77,16 +77,3 @@ String qmodDataToJson(const QMODData& data) {
     json += "]";
     return json;
 }
-
-/**
- * @brief Convert all three data structures to a combined JSON object
- */
-String allDataToJson(const QPIGSData& qpigsData, const QPIRIData& qpiriData, const QMODData& qmodData) {
-    String json = "{";
-    json += "\"timestamp\": " + String(millis()) + ", ";
-    json += "\"qpigs\": " + qpigsDataToJson(qpigsData) + ", ";
-    json += "\"qpiri\": " + qpiriDataToJson(qpiriData) + ", ";
-    json += "\"qmod\": " + qmodDataToJson(qmodData);
-    json += "}";
-    return json;
-}
