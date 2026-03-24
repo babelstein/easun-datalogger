@@ -62,7 +62,7 @@ void setup() {
   debugPrint("Rozpoczynam podsłuchiwanie sekwencyjne. . .");
 
   // Connect to Wi-Fi
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     debugPrint(".", false);
@@ -164,7 +164,7 @@ void healthCheck(){
   client.setTimeout(10000);
   http.setTimeout(10000);
   
-  http.begin(client, api_url);
+  http.begin(client, API_URL);
   
   int httpCode = http.GET();
   
@@ -192,10 +192,10 @@ void sendDataArray(String* results) {
   client.setTimeout(10000);
   http.setTimeout(10000);
   
-  http.begin(client, api_url);
+  http.begin(client, API_URL);
   
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", auth_token);
+  http.addHeader("Authorization", AUTH_TOKEN);
   
   // Budowanie tablicy obiektów JSON
   String jsonObjects = "[";
@@ -290,4 +290,3 @@ void loop() {
   currentCommandIndex = 0;
   delay(1500);
 }
-
