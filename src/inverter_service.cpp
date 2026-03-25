@@ -56,28 +56,22 @@ AllCommandResults InverterService::sendAllCommands() {
     
     // Send QPIGS command and parse result
     _serial.write(ALL_COMMANDS[0], CMD_SIZES[0]); // cmd_QPIGS
-    delay(_delay * 2);
+    delay(_delay);
     String qpigsResult = readResult();
     parseQPIGSMessage(qpigsResult, &results.qpigsData);
     
     // Send QMOD command and parse result
     _serial.write(ALL_COMMANDS[1], CMD_SIZES[1]); // cmd_QMOD
-    delay(_delay * 2);
+    delay(_delay);
     String qmodResult = readResult();
     parseQMODMessage(qmodResult, &results.qmodData);
     
     // Send QPIRI command and parse result
     _serial.write(ALL_COMMANDS[2], CMD_SIZES[2]); // cmd_QPIRI
-    delay(_delay * 2);
+    delay(_delay);
     String qpiriResult = readResult();
     parseQPIRIMessage(qpiriResult, &results.qpiriData);
-    
-    // Read serial number from QID command
-    _serial.write(ALL_COMMANDS[3], CMD_SIZES[3]); // cmd_QID
-    delay(_delay * 2);
-    String serialNumberResult = readResult();
-    results.serialNumber = serialNumberResult.substring(serialNumberResult.indexOf(":") + 1);
-    
+
     return results;
 }
 

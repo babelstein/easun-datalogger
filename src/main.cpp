@@ -74,60 +74,11 @@ void setup() {
     while (!mqttClient.connected()) {
         if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
         }
-        delay(5000);
+        delay(1000);
     }
 }
 
-// Parse response string - extracts content between parentheses and removes them
-String readResult() {
-    String commandResult;
-    if (Serial.available()) {
-        while (Serial.available()) {
-            char c = Serial.read();
-            
-            if (c == '(') {
-                continue;
-            }
-            else if (c == ')') {
-                continue;
-            }
-            else if (c == '\r') {
-                return commandResult;
-            } 
-            else if (c >= 32 && c <= 126) {
-                commandResult += c;
-            }
-            yield();
-        }
-    }
-    Serial.flush();
-    return commandResult;
-}
-
-void displayResults(String result) {
-}
-
-void healthCheck() {
-    WiFiClientSecure client;
-    HTTPClient http;
-    X509List cert(caCert);
-    
-    client.setTrustAnchors(&cert);
-    client.setTimeout(10000);
-    http.setTimeout(10000);
-    
-    http.begin(client, API_URL);
-    
-    int httpCode = http.GET();
-    
-    if (httpCode == 200) {
-    } else {
-    }
-    
-    http.end();
-}
-
-void sendDataArray(String* results) {
+void sendDataToApi(String* results) {
     WiFiClientSecure client;
     HTTPClient http;
     X509List cert(caCert);
@@ -186,16 +137,11 @@ void loop() {
     while (!mqttClient.connected()) {
         if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
         }
-        delay(5000);
+        delay(1000);
     }
 
     // Step 1: Execute Inverter Service function that sends all defined commands and return their data as object
     AllCommandResults allResults = inverterService.sendAllCommands();
-    String* RawResults = new String[CMD_COUNT];
-    RawResults[0] = "\""+allResults.qpigs+"\"";
-    RawResults[1] = "\""+allResults.qmod+"\"";
-    RawResults[2] = "\""+allResults.qpiri+"\"";
-    sendDataArray(RawResults);
 
     // Step 2: Send each command result to MQTT as separate message via MQTT Service instance
     // Use json_serializer.cpp functions to properly parse structs to json strings
@@ -209,8 +155,8 @@ void loop() {
         mqttService.sendMessage(MQTT_TOPIC, payload);
     }
     
-    // Step 3: Send each command result to API using sendDataArray() function
-    sendDataArray(results);
+    // Step 3: Send each command result to API using sendDataToApi() function
+    sendDataToApi(results);
     
     // Step 4: If there are custom commands waiting to be executed, get first command from array and execute it via Inverter Service function
     if (!customCommands.empty()) {
@@ -223,7 +169,7 @@ void loop() {
         // Step 6: Send executed custom command result to API using sendDataArray() function
         String* customResults = new String[1];
         customResults[0] = customResult.data;
-        sendDataArray(customResults);
+        sendDataToApi(customResults);
         delete[] customResults;
         
         // Step 7: Remove executed custom command from array
@@ -231,5 +177,5 @@ void loop() {
     }
     
     delete[] results;
-    delay(1500);
+    // delay(1500);
 }
