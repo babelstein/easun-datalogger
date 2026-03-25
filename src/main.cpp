@@ -96,7 +96,7 @@ void sendDataToApi(String* results) {
     String jsonObjects = "[";
     for (int i = 0; i < CMD_COUNT; i++) {
         jsonObjects += "{\"operation\": \"" + String(CMD_NAMES[i]) + "\", " +
-                       "\"message\": \"" + results[i] + "\"}";
+                       "\"message\": " + results[i] + "}";
         
         if (i < CMD_COUNT - 1) {
             jsonObjects += ",";
