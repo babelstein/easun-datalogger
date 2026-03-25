@@ -195,7 +195,6 @@ void loop() {
     RawResults[0] = "\""+allResults.qpigs+"\"";
     RawResults[1] = "\""+allResults.qmod+"\"";
     RawResults[2] = "\""+allResults.qpiri+"\"";
-    RawResults[3] = "\""+allResults.serialNumber+"\"";
     sendDataArray(RawResults);
 
     // Step 2: Send each command result to MQTT as separate message via MQTT Service instance
@@ -204,7 +203,6 @@ void loop() {
     results[0] = qpigsDataToJson(allResults.qpigsData);
     results[1] = qmodDataToJson(allResults.qmodData);
     results[2] = qpiriDataToJson(allResults.qpiriData);
-    results[3] = "{\"serialNumber\":\"" + allResults.serialNumber + "\"}";
     
     for (int i = 0; i < CMD_COUNT; i++) {
         String payload = "{\"command\":\"" + String(CMD_NAMES[i]) + "\",\"result\": " + results[i] + "}";
