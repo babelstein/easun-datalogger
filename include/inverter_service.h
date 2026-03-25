@@ -19,6 +19,10 @@ struct AllCommandResults {
     QMODData qmodData;
     QPIRIData qpiriData;
     String serialNumber;
+
+    String qpigs;
+    String qmod;
+    String qpiri;
 };
 
 class InverterService {

@@ -4,7 +4,7 @@
  * @brief Convert QPIGSData to JSON string
  */
 String qpigsDataToJson(const QPIGSData& data) {
-    String json = "[";
+    String json = "{";
     json += "\"inputACVoltage\": " + String(data.inputACVoltage, 1) + ", ";
     json += "\"gridFrequency\": " + String(data.gridFrequency, 1) + ", ";
     json += "\"acOutputVoltage\": " + String(data.acOutputVoltage, 1) + ", ";
@@ -26,7 +26,7 @@ String qpigsDataToJson(const QPIGSData& data) {
     json += "\"additionalData2\": " + String(data.additionalData2) + ", ";
     json += "\"pvProduction\": " + String(data.pvProduction, 1) + ", ";
     json += "\"additionalFlags\": " + String(data.additionalFlags);
-    json += "]";
+    json += "}";
     return json;
 }
 
@@ -34,7 +34,7 @@ String qpigsDataToJson(const QPIGSData& data) {
  * @brief Convert QPIRIData to JSON string
  */
 String qpiriDataToJson(const QPIRIData& data) {
-    String json = "[";
+    String json = "{";
     json += "\"ratedACInputVoltage\": " + String(data.ratedACInputVoltage, 1) + ", ";
     json += "\"ratedACInputCurrent\": " + String(data.ratedACInputCurrent, 1) + ", ";
     json += "\"ratedACOutputVoltage\": " + String(data.ratedACOutputVoltage, 1) + ", ";
@@ -62,7 +62,7 @@ String qpiriDataToJson(const QPIRIData& data) {
     json += "\"pvPowerStatus\": " + String(data.pvPowerStatus) + ", ";
     json += "\"lowDCCutOffVoltage\": " + String(data.lowDCCutOffVoltage, 1) + ", ";
     json += "\"maxPVChargingCurrent\": " + String(data.maxPVChargingCurrent, 1);
-    json += "]";
+    json += "}";
     return json;
 }
 
@@ -70,10 +70,10 @@ String qpiriDataToJson(const QPIRIData& data) {
  * @brief Convert QMODData to JSON string
  */
 String qmodDataToJson(const QMODData& data) {
-    String json = "[";
+    String json = "{";
     json += "\"modeChar\": \"" + String(data.modeChar) + "\", ";
     json += "\"mode\": \"" + String(data.modeName) + "\", ";
     json += "\"modeValue\": " + String((int)data.mode);
-    json += "]";
+    json += "}";
     return json;
 }

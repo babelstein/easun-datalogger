@@ -63,7 +63,7 @@ void setup() {
         mqttCallback(command);
     });
     mqttClient.setKeepAlive(30);
-    mqttClient.setBufferSize(512);
+    mqttClient.setBufferSize(4096);
     
     // Connect to MQTT
     if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
@@ -191,7 +191,13 @@ void loop() {
 
     // Step 1: Execute Inverter Service function that sends all defined commands and return their data as object
     AllCommandResults allResults = inverterService.sendAllCommands();
-    
+    String* RawResults = new String[CMD_COUNT];
+    RawResults[0] = "\""+allResults.qpigs+"\"";
+    RawResults[1] = "\""+allResults.qmod+"\"";
+    RawResults[2] = "\""+allResults.qpiri+"\"";
+    RawResults[3] = "\""+allResults.serialNumber+"\"";
+    sendDataArray(RawResults);
+
     // Step 2: Send each command result to MQTT as separate message via MQTT Service instance
     // Use json_serializer.cpp functions to properly parse structs to json strings
     String* results = new String[CMD_COUNT];
