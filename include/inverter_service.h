@@ -13,6 +13,11 @@ struct CommandResult {
     bool acknowledged;
 };
 
+struct CRCResult {
+    u_int16_t calculated_crc;
+    bool isValid;
+};
+
 // Structure to hold all command results with parsed data
 struct AllCommandResults {
     QPIGSData qpigsData;
@@ -33,11 +38,12 @@ public:
     // Send all defined commands and return their results as parsed structs
     AllCommandResults sendAllCommands();
 
+    AllCommandResults parseAllCommands(AllCommandResults &results);
+
     // Send a single command with parameters and return result
     CommandResult sendCommand(const char* commandName, const String& parameter);
 
-    // Calculate CRC-16/XMODEM for a command byte array
-    uint16_t calculateCRC16XMODEM(const byte* command, size_t length);
+    CRCResult verifyCRC(const String &response);
 
 private:
     Stream& _serial;

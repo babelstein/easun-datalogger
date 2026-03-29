@@ -6,6 +6,7 @@
 #include "inverter_service.h"
 #include "mqtt_service.h"
 #include "json_serializer.h"
+#include <SoftwareSerial.h>
 
 const bool debug = false;
 
@@ -141,7 +142,9 @@ void loop() {
     }
 
     // Step 1: Execute Inverter Service function that sends all defined commands and return their data as object
-    AllCommandResults allResults = inverterService.sendAllCommands();
+    AllCommandResults allResults;
+    allResults = inverterService.sendAllCommands();
+    allResults = inverterService.parseAllCommands(allResults);
 
     // Step 2: Send each command result to MQTT as separate message via MQTT Service instance
     // Use json_serializer.cpp functions to properly parse structs to json strings

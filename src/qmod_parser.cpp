@@ -15,9 +15,20 @@ bool parseQMODMessage(const String& message, QMODData* data) {
     data->mode = QMODMode::UNKNOWN;
     data->modeName = "";
     
+    // Remove '(' at the beginning and last 3 bytes (CRC + \r)
+    String temp = message;
+    if (temp.length() > 3) {
+        // Remove '(' at the beginning if present
+        if (temp.charAt(0) == '(') {
+            temp = temp.substring(1);
+        }
+        // Remove last 3 bytes (CRC + \r)
+        temp = temp.substring(0, temp.length() - 3);
+    }
+    
     // Get the first character (skip any whitespace)
-    if (message.length() > 0) {
-        data->modeChar = message[0];
+    if (temp.length() > 0) {
+        data->modeChar = temp[0];
         
         // Map character to enum and name
         switch (data->modeChar) {

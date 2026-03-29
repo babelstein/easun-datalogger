@@ -56,14 +56,23 @@ bool parseQPIGSMessage(const String& message, QPIGSData* data) {
     data->pvProduction = 0.0;
     data->additionalFlags = 0;
     
+    // Remove '(' at the beginning and last 3 bytes (CRC + \r)
+    String temp = message;
+    if (temp.length() > 3) {
+        // Remove '(' at the beginning if present
+        if (temp.charAt(0) == '(') {
+            temp = temp.substring(1);
+        }
+        // Remove last 3 bytes (CRC + \r)
+        temp = temp.substring(0, temp.length() - 3);
+    }
+    
     // Split message by spaces
     String values[] = {"", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""};
     int valueCount = 0;
     
     // Simple space-separated parsing
-    String temp = message;
     int start = 0;
-    int pos = -1;
     
     for (int i = 0; i < temp.length(); i++) {
         if (temp[i] == ' ') {
