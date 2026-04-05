@@ -1,12 +1,19 @@
-#include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
 #include <PubSubClient.h>
 #include "secrets.h"
 #include "inverter_commands.h"
 #include "inverter_service.h"
 #include "mqtt_service.h"
 #include "json_serializer.h"
-#include <SoftwareSerial.h>
+
+#ifdef ESP8266
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#endif
+
+#ifdef ESP32
+#include <WiFi.h>
+#include <HTTPClient.h>
+#endif
 
 const bool debug = false;
 
@@ -16,8 +23,14 @@ WiFiClient mqttWiFiClient;
 // MQTT client
 PubSubClient mqttClient(mqttWiFiClient);
 
-// Inverter Service instance
+#ifdef ESP32
+// ESP32: Use UART1 for inverter, UART0 (Serial) for USB-C debugging/upload
+// UART1: GPIO 17 (TX), GPIO 18 (RX) - can be changed in setup()
+InverterService inverterService(Serial1);
+#else
+// ESP8266: Use default Serial (only one hardware UART available)
 InverterService inverterService(Serial);
+#endif
 
 // MQTT Service instance
 MQTTService mqttService(mqttClient, MQTT_TOPIC);
@@ -31,23 +44,45 @@ void mqttCallback(MqttCommand command) {
 }
 
 void setup() {
+#ifdef ESP32
+    // ESP32: Initialize UART1 for inverter communication
+    // GPIO 17 (TX), GPIO 18 (RX) - can be changed as needed
+    Serial1.begin(9600, SERIAL_8N1, 17, 18);
+    Serial1.println("UART1 (Inverter) initialized");
+#else
+    // ESP8266: Serial is used for inverter communication, no separate initialization needed
     if(debug) {
-        Serial.begin(9600);
+        Serial.begin(115200);
         while (!Serial) {
             ; // wait for serial port to connect. Needed for native USB
         }
     } else {
-        Serial.begin(2400);
+        Serial.begin(115200);
     }
+#endif
 
+    Serial.println("Initializing system...");
     configTime(0, 0, "pool.ntp.org"); 
-
+    
     // Connect to Wi-Fi
+    Serial.print("Connecting to WiFi...");
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) {
+    int wifiRetryCount = 0;
+    int maxWifiRetries = 30;
+    while (WiFi.status() != WL_CONNECTED && wifiRetryCount < maxWifiRetries) {
         delay(1000);
+        Serial.print(".");
+        wifiRetryCount++;
     }
-
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println(" OK");
+        Serial.print("WiFi connected, IP: ");
+        Serial.println(WiFi.localIP());
+    } else {
+        Serial.println(" FAILED");
+        Serial.println("WiFi connection failed after retries");
+    }
+    
     // Initialize MQTT
     mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
     mqttClient.setCallback([](char* topic, byte* payload, unsigned int length) {
@@ -67,15 +102,30 @@ void setup() {
     mqttClient.setBufferSize(4096);
     
     // Connect to MQTT
+    Serial.print("Connecting to MQTT...");
     if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
+        Serial.println(" OK");
+        Serial.print("MQTT connected, topic: ");
+        Serial.println(MQTT_TOPIC);
     } else {
+        Serial.println(" FAILED");
+        Serial.print("MQTT connect failed, error code: ");
+        Serial.println(mqttClient.state());
     }
     
-    // Reconnect MQTT loop
-    while (!mqttClient.connected()) {
+    // Wait for MQTT to be connected (with timeout)
+    int mqttRetryCount = 0;
+    int maxMqttRetries = 30;
+    while (!mqttClient.connected() && mqttRetryCount < maxMqttRetries) {
         if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
+            Serial.println("MQTT reconnected successfully");
+            break;
         }
         delay(1000);
+        mqttRetryCount++;
+    }
+    if (!mqttClient.connected()) {
+        Serial.println("MQTT connection failed after retries");
     }
 }
 
@@ -134,11 +184,34 @@ void sendDataToApi(String* results) {
 }
 
 void loop() {
-    // MQTT keep alive loop
-    while (!mqttClient.connected()) {
-        if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
+    // WiFi connection check and reconnection
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("WiFi disconnected, attempting to reconnect...");
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+        int retryCount = 0;
+        while (WiFi.status() != WL_CONNECTED && retryCount < 10) {
+            delay(1000);
+            retryCount++;
         }
-        delay(1000);
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.println("WiFi reconnected successfully");
+        } else {
+            Serial.println("WiFi reconnection failed");
+        }
+        // Wait before continuing operations if WiFi is still not connected
+        if (WiFi.status() != WL_CONNECTED) {
+            delay(5000);
+        }
+    }
+
+    // MQTT keep alive loop (only if WiFi is connected)
+    if (WiFi.status() == WL_CONNECTED && !mqttClient.connected()) {
+        Serial.println("MQTT disconnected, attempting to reconnect...");
+        if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
+            Serial.println("MQTT reconnected successfully");
+        } else {
+            Serial.println("MQTT reconnection failed");
+        }
     }
 
     // Step 1: Execute Inverter Service function that sends all defined commands and return their data as object
