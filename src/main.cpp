@@ -13,8 +13,11 @@
 #ifdef ESP32
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #endif
 
+const int RX2_PIN = 16;
+const int TX2_PIN = 17;
 const bool debug = false;
 
 // WiFi client for MQTT
@@ -24,12 +27,12 @@ WiFiClient mqttWiFiClient;
 PubSubClient mqttClient(mqttWiFiClient);
 
 #ifdef ESP32
-// ESP32: Use UART1 for inverter, UART0 (Serial) for USB-C debugging/upload
-// UART1: GPIO 17 (TX), GPIO 18 (RX) - can be changed in setup()
-InverterService inverterService(Serial1);
+    // ESP32: Use UART1 for inverter, UART0 (Serial) for USB-C debugging/upload
+    // UART1: GPIO 17 (TX), GPIO 18 (RX) - can be changed in setup()
+    InverterService inverterService(Serial2);
 #else
-// ESP8266: Use default Serial (only one hardware UART available)
-InverterService inverterService(Serial);
+    // ESP8266: Use default Serial (only one hardware UART available)
+    InverterService inverterService(Serial);
 #endif
 
 // MQTT Service instance
@@ -43,12 +46,22 @@ void mqttCallback(MqttCommand command) {
     customCommands.push_back(command);
 }
 
+void debugPrint(String message, bool newLine = true) {
+  if (debug) {
+    if (newLine) {
+      Serial.println(message);
+    } else {
+      Serial.print(message);
+    }
+  }
+}
+
 void setup() {
 #ifdef ESP32
+    Serial.begin(9600);
     // ESP32: Initialize UART1 for inverter communication
-    // GPIO 17 (TX), GPIO 18 (RX) - can be changed as needed
-    Serial1.begin(9600, SERIAL_8N1, 17, 18);
-    Serial1.println("UART1 (Inverter) initialized");
+    Serial2.begin(2400, SERIAL_8N1, RX2_PIN, TX2_PIN);
+    
 #else
     // ESP8266: Serial is used for inverter communication, no separate initialization needed
     if(debug) {
@@ -61,26 +74,26 @@ void setup() {
     }
 #endif
 
-    Serial.println("Initializing system...");
+    debugPrint("Initializing system...");
     configTime(0, 0, "pool.ntp.org"); 
     
     // Connect to Wi-Fi
-    Serial.print("Connecting to WiFi...");
+    debugPrint("Connecting to WiFi...", false);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     int wifiRetryCount = 0;
     int maxWifiRetries = 30;
     while (WiFi.status() != WL_CONNECTED && wifiRetryCount < maxWifiRetries) {
         delay(1000);
-        Serial.print(".");
+        debugPrint(".", false);
         wifiRetryCount++;
     }
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.println(" OK");
-        Serial.print("WiFi connected, IP: ");
-        Serial.println(WiFi.localIP());
+        debugPrint(" OK");
+        debugPrint("WiFi connected, IP: ");
+        debugPrint(WiFi.localIP().toString());
     } else {
-        Serial.println(" FAILED");
-        Serial.println("WiFi connection failed after retries");
+        debugPrint(" FAILED");
+        debugPrint("WiFi connection failed after retries");
     }
     
     // Initialize MQTT
@@ -102,15 +115,15 @@ void setup() {
     mqttClient.setBufferSize(4096);
     
     // Connect to MQTT
-    Serial.print("Connecting to MQTT...");
+    debugPrint("Connecting to MQTT...");
     if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
-        Serial.println(" OK");
-        Serial.print("MQTT connected, topic: ");
-        Serial.println(MQTT_TOPIC);
+        debugPrint(" OK");
+        debugPrint("MQTT connected, topic: ");
+        debugPrint(MQTT_TOPIC);
     } else {
-        Serial.println(" FAILED");
-        Serial.print("MQTT connect failed, error code: ");
-        Serial.println(mqttClient.state());
+        debugPrint(" FAILED");
+        debugPrint("MQTT connect failed, error code: ");
+        debugPrint(String(mqttClient.state()));
     }
     
     // Wait for MQTT to be connected (with timeout)
@@ -118,23 +131,27 @@ void setup() {
     int maxMqttRetries = 30;
     while (!mqttClient.connected() && mqttRetryCount < maxMqttRetries) {
         if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
-            Serial.println("MQTT reconnected successfully");
+            debugPrint("MQTT reconnected successfully");
             break;
         }
         delay(1000);
         mqttRetryCount++;
     }
     if (!mqttClient.connected()) {
-        Serial.println("MQTT connection failed after retries");
+        debugPrint("MQTT connection failed after retries");
     }
 }
 
 void sendDataToApi(String* results) {
     WiFiClientSecure client;
     HTTPClient http;
-    X509List cert(caCert);
+    #ifdef ESP8266
+        X509List cert(caCert);
+        client.setTrustAnchors(&cert);
+    #else
+        client.setCACert(caCert);
+    #endif
     
-    client.setTrustAnchors(&cert);
     client.setTimeout(10000);
     http.setTimeout(10000);
     
@@ -186,7 +203,7 @@ void sendDataToApi(String* results) {
 void loop() {
     // WiFi connection check and reconnection
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi disconnected, attempting to reconnect...");
+        debugPrint("WiFi disconnected, attempting to reconnect...");
         WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
         int retryCount = 0;
         while (WiFi.status() != WL_CONNECTED && retryCount < 10) {
@@ -194,9 +211,9 @@ void loop() {
             retryCount++;
         }
         if (WiFi.status() == WL_CONNECTED) {
-            Serial.println("WiFi reconnected successfully");
+            debugPrint("WiFi reconnected successfully");
         } else {
-            Serial.println("WiFi reconnection failed");
+            debugPrint("WiFi reconnection failed");
         }
         // Wait before continuing operations if WiFi is still not connected
         if (WiFi.status() != WL_CONNECTED) {
@@ -206,11 +223,11 @@ void loop() {
 
     // MQTT keep alive loop (only if WiFi is connected)
     if (WiFi.status() == WL_CONNECTED && !mqttClient.connected()) {
-        Serial.println("MQTT disconnected, attempting to reconnect...");
+        debugPrint("MQTT disconnected, attempting to reconnect...");
         if (mqttClient.connect("ESP8266Client", MQTT_USER, MQTT_PASSWORD)) {
-            Serial.println("MQTT reconnected successfully");
+            debugPrint("MQTT reconnected successfully");
         } else {
-            Serial.println("MQTT reconnection failed");
+            debugPrint("MQTT reconnection failed");
         }
     }
 
@@ -218,6 +235,12 @@ void loop() {
     AllCommandResults allResults;
     allResults = inverterService.sendAllCommands();
     allResults = inverterService.parseAllCommands(allResults);
+    
+    // Debug: Print parsed results
+    debugPrint("=== Parsed Command Results ===");
+    debugPrint("QPIGS: " + allResults.qpigs);
+    debugPrint("QMOD: " + allResults.qmod);
+    debugPrint("QPIRI: " + allResults.qpiri);
 
     // Step 2: Send each command result to MQTT as separate message via MQTT Service instance
     // Use json_serializer.cpp functions to properly parse structs to json strings
@@ -225,6 +248,12 @@ void loop() {
     results[0] = qpigsDataToJson(allResults.qpigsData);
     results[1] = qmodDataToJson(allResults.qmodData);
     results[2] = qpiriDataToJson(allResults.qpiriData);
+    
+    // Debug: Print JSON results
+    debugPrint("=== JSON Results ===");
+    debugPrint("QPIGS JSON: " + results[0]);
+    debugPrint("QMOD JSON: " + results[1]);
+    debugPrint("QPIRI JSON: " + results[2]);
     
     for (int i = 0; i < CMD_COUNT; i++) {
         String payload = "{\"command\":\"" + String(CMD_NAMES[i]) + "\",\"result\": " + results[i] + "}";

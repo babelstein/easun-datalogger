@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-const unsigned long MILISECONDS_DELAY = 750;
+const unsigned long MILISECONDS_DELAY = 650;
 const int MAX_RETRIES = 3;
 
 // Definicje gotowych ramek z obliczonym CRC (CRC-16/XMODEM) i znakiem \r

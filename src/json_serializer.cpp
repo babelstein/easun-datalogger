@@ -21,7 +21,15 @@ String qpigsDataToJson(const QPIGSData& data) {
     json += "\"pvInputVoltage\": " + String(data.pvInputVoltage, 1) + ", ";
     json += "\"batteryVoltageFromSCC\": " + String(data.batteryVoltageFromSCC, 1) + ", ";
     json += "\"batteryDischargeCurrent\": " + String(data.batteryDischargeCurrent, 1) + ", ";
-    json += "\"deviceStatusFlags\": " + String(data.deviceStatusFlags) + ", ";
+    json += "\"deviceStatusFlags\": \"" + data.deviceStatusFlags + "\", ";
+    json += "\"sbuPriority\": " + String(data.sbuPriority) + ", ";
+    json += "\"configChanged\": " + String(data.configChanged) + ", ";
+    json += "\"sccFirmwareUpdated\": " + String(data.sccFirmwareUpdated) + ", ";
+    json += "\"loadStatus\": " + String(data.loadStatus) + ", ";
+    json += "\"batteryVoltageSteady\": " + String(data.batteryVoltageSteady) + ", ";
+    json += "\"chargingStatus\": " + String(data.chargingStatus) + ", ";
+    json += "\"sccChargingStatus\": " + String(data.sccChargingStatus) + ", ";
+    json += "\"acChargingStatus\": " + String(data.acChargingStatus) + ", ";
     json += "\"additionalData1\": " + String(data.additionalData1) + ", ";
     json += "\"additionalData2\": " + String(data.additionalData2) + ", ";
     json += "\"pvProduction\": " + String(data.pvProduction, 1) + ", ";

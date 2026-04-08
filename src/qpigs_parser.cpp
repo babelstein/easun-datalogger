@@ -50,7 +50,15 @@ bool parseQPIGSMessage(const String& message, QPIGSData* data) {
     data->pvInputVoltage = 0.0;
     data->batteryVoltageFromSCC = 0.0;
     data->batteryDischargeCurrent = 0.0;
-    data->deviceStatusFlags = 0;
+    data->deviceStatusFlags = "";
+    data->sbuPriority = false;
+    data->configChanged = false;
+    data->sccFirmwareUpdated = false;
+    data->loadStatus = false;
+    data->batteryVoltageSteady = false;
+    data->chargingStatus = false;
+    data->sccChargingStatus = false;
+    data->acChargingStatus = false;
     data->additionalData1 = 0;
     data->additionalData2 = 0;
     data->pvProduction = 0.0;
@@ -136,8 +144,22 @@ bool parseQPIGSMessage(const String& message, QPIGSData* data) {
         data->batteryDischargeCurrent = atof(values[15].c_str());
     }
     if (valueCount >= 17) {
-        data->deviceStatusFlags = atoi(values[16].c_str());
+        data->deviceStatusFlags = values[16];
     }
+    
+    // Extract individual bits from deviceStatusFlags
+    if (valueCount >= 17 && !data->deviceStatusFlags.isEmpty()) {
+        int flags = data->deviceStatusFlags.toInt();
+        data->sbuPriority = (flags & 0x01) != 0;
+        data->configChanged = (flags & 0x02) != 0;
+        data->sccFirmwareUpdated = (flags & 0x04) != 0;
+        data->loadStatus = (flags & 0x08) != 0;
+        data->batteryVoltageSteady = (flags & 0x10) != 0;
+        data->chargingStatus = (flags & 0x20) != 0;
+        data->sccChargingStatus = (flags & 0x40) != 0;
+        data->acChargingStatus = (flags & 0x80) != 0;
+    }
+    
     if (valueCount >= 18) {
         data->additionalData1 = atoi(values[17].c_str());
     }

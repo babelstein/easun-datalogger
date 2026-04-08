@@ -57,19 +57,43 @@ struct QPIGSData {
     // 16. Battery Discharge Current [A]
     float batteryDischargeCurrent;
     
-    // 17. Device Status Flags
-    int deviceStatusFlags;
+    // 17. Device Status Flags (raw string)
+    String deviceStatusFlags;
     
-    // 18. Additional Data 1/ Reserve
+    // 18. Device Status Flags - Bit 0: SBU Priority
+    bool sbuPriority;
+    
+    // 19. Device Status Flags - Bit 1: Configuration changed
+    bool configChanged;
+    
+    // 20. Device Status Flags - Bit 2: SCC Firmware updated
+    bool sccFirmwareUpdated;
+    
+    // 21. Device Status Flags - Bit 3: Load status
+    bool loadStatus;
+    
+    // 22. Device Status Flags - Bit 4: Battery voltage steady
+    bool batteryVoltageSteady;
+    
+    // 23. Device Status Flags - Bit 5: Charging status
+    bool chargingStatus;
+    
+    // 24. Device Status Flags - Bit 6: SCC charging status
+    bool sccChargingStatus;
+    
+    // 25. Device Status Flags - Bit 7: AC charging status
+    bool acChargingStatus;
+    
+    // 26. Additional Data 1/ Reserve
     int additionalData1;
     
-    // 19. Additional Data 2/ Reserve
+    // 27. Additional Data 2/ Reserve
     int additionalData2;
     
-    // 20. PV Production in Watts [W]
+    // 28. PV Production in Watts [W]
     float pvProduction;
     
-    // 21. Additional Flags
+    // 29. Additional Flags
     int additionalFlags;
 };
 
