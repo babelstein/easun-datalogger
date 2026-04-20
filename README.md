@@ -429,6 +429,18 @@ Server response: [{"operation":"QPIGS","message":...}]
 | ❌ CRC błąd | Sprawdź połączenie UART z inwerterem |
 | ❌ UART nie działa | Sprawdź pinowanie UART w `main.cpp` |
 
+### Rozwiązanie problemu z programowaniem ESP32U w PlatformIO
+
+Jeśli Twoja płytka ESP32 (wersja U z anteną zewnętrzną) jest widoczna w Menedżerze Urządzeń jako **"Nieznane urządzenie: CP2102 USB to UART Bridge"**, wykonaj poniższe kroki.
+
+### 1. Instalacja Brakujących Sterowników
+System Windows nie zawsze posiada wbudowane sterowniki dla konwertera CP2102.
+1. Pobierz sterowniki ze strony producenta: [Silicon Labs CP210x VCP Drivers](https://silabs.com).
+2. Wybierz paczkę: **CP210x Universal Windows Driver**.
+3. Rozpakuj archiwum, kliknij prawym przyciskiem myszy na plik `silabser.inf` i wybierz **Zainstaluj**.
+4. Odłącz i podłącz płytkę – w Menedżerze Urządzeń powinien pojawić się port, np. `Silicon Labs CP210x USB to UART Bridge (COM3)`.
+
+
 ### Struktura projektu
 
 ```
