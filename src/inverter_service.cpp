@@ -67,6 +67,16 @@ CRCResult InverterService::verifyCRC(const String& response)
     return result;
 }
 
+/**
+ * @brief Check if response contains NAKss (command not received properly)
+ * @param response The response string from inverter
+ * @return true if NAKss is present, false otherwise
+ */
+bool InverterService::isNAKssResponse(const String& response)
+{
+    return response.indexOf("(NAKss") >= 0;
+}
+
 String InverterService::readResult()
 {
     String commandResult;
@@ -111,7 +121,7 @@ AllCommandResults InverterService::sendAllCommands()
         delay(_delay);
         result = readResult();
         crcResult = verifyCRC(result);
-    } while (!crcResult.isValid);
+    } while (!crcResult.isValid && !isNAKssResponse(result));
     results.qpigs = result;
 
     result = "";
@@ -120,7 +130,7 @@ AllCommandResults InverterService::sendAllCommands()
         delay(_delay);
         result = readResult();
         crcResult = verifyCRC(result);
-    } while (!crcResult.isValid);
+    } while (!crcResult.isValid && !isNAKssResponse(result));
     results.qmod = result;
 
     result = "";
@@ -129,7 +139,7 @@ AllCommandResults InverterService::sendAllCommands()
         delay(_delay);
         result = readResult();
         crcResult = verifyCRC(result);
-    } while (!crcResult.isValid);
+    } while (!crcResult.isValid && !isNAKssResponse(result));
     results.qpiri = result;
     
     return results;
@@ -195,8 +205,15 @@ CommandResult InverterService::sendCommand(const char *commandName, const String
     // Read result
     result.data = readResult();
 
-    // Set acknowledged based on whether we received a result
-    result.acknowledged = !result.data.isEmpty();
+    // Check for NAKss response - command not received properly by inverter
+    if (isNAKssResponse(result.data)) {
+        result.acknowledged = false;
+        result.data = ""; // Clear data to indicate failure
+    }
+    // Set acknowledged based on whether we received a valid result (not NAKss)
+    else {
+        result.acknowledged = !result.data.isEmpty();
+    }
 
     return result;
 }
