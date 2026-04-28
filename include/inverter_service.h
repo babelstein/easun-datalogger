@@ -46,7 +46,7 @@ public:
     CRCResult verifyCRC(const String &response);
 
     // Check if response contains NAKss (command not received properly)
-    bool isNAKssResponse(const String& response);
+    bool isNegativeAcknowledgeResponse(const String& response);
 
 private:
     Stream& _serial;

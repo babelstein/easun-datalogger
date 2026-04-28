@@ -364,11 +364,11 @@ System obsługuje odbieranie komend przez MQTT. Komendy są przetwarzane w kolej
 ## 🔍 Logowanie
 
 Urządzenie loguje:
-- ✅ Sukcesowe połączenia WiFi
-- ✅ Sukcesowe połączenia MQTT
-- ✅ Sukcesowe żądania HTTP (200)
+- ✅ Sukces połączenia WiFi
+- ✅ Sukces połączenia MQTT
+- ✅ Sukces żądania HTTP (200)
 - ❌ Błędy HTTP (4xx, 5xx)
-- ❌ Próby retry (1/3, 2/3, 3/3)
+- ❌ Próby ponownego wysłania żądania (1/3, 2/3, 3/3)
 - ❌ Osiągnięcie maksymalnych prób
 - ✅ Wyniki komend inwertera
 

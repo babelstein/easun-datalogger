@@ -72,7 +72,7 @@ CRCResult InverterService::verifyCRC(const String& response)
  * @param response The response string from inverter
  * @return true if NAKss is present, false otherwise
  */
-bool InverterService::isNAKssResponse(const String& response)
+bool InverterService::isNegativeAcknowledgeResponse(const String& response)
 {
     return response.indexOf("(NAKss") >= 0;
 }
@@ -121,7 +121,7 @@ AllCommandResults InverterService::sendAllCommands()
         delay(_delay);
         result = readResult();
         crcResult = verifyCRC(result);
-    } while (!crcResult.isValid && !isNAKssResponse(result));
+    } while (!crcResult.isValid || isNegativeAcknowledgeResponse(result));
     results.qpigs = result;
 
     result = "";
@@ -130,7 +130,7 @@ AllCommandResults InverterService::sendAllCommands()
         delay(_delay);
         result = readResult();
         crcResult = verifyCRC(result);
-    } while (!crcResult.isValid && !isNAKssResponse(result));
+    } while (!crcResult.isValid || isNegativeAcknowledgeResponse(result));
     results.qmod = result;
 
     result = "";
@@ -139,7 +139,7 @@ AllCommandResults InverterService::sendAllCommands()
         delay(_delay);
         result = readResult();
         crcResult = verifyCRC(result);
-    } while (!crcResult.isValid && !isNAKssResponse(result));
+    } while (!crcResult.isValid || isNegativeAcknowledgeResponse(result));
     results.qpiri = result;
     
     return results;
@@ -205,8 +205,8 @@ CommandResult InverterService::sendCommand(const char *commandName, const String
     // Read result
     result.data = readResult();
 
-    // Check for NAKss response - command not received properly by inverter
-    if (isNAKssResponse(result.data)) {
+    // Check for Negative Acknowledge response - command not received properly by inverter
+    if (isNegativeAcknowledgeResponse(result.data)) {
         result.acknowledged = false;
         result.data = ""; // Clear data to indicate failure
     }
